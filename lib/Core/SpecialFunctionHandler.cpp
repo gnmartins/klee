@@ -113,6 +113,8 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_stack_trace", handleStackTrace, false),
   add("klee_warning", handleWarning, false),
   add("klee_warning_once", handleWarningOnce, false),
+  // assert-p4 changes
+  add("klee_print_once", handlePrintOnce, false),
   add("klee_alias_function", handleAliasFunction, false),
   add("malloc", handleMalloc, true),
   add("realloc", handleRealloc, true),
@@ -202,6 +204,26 @@ void SpecialFunctionHandler::prepare() {
     }
   }
 }
+
+// assert-p4 changes
+void SpecialFunctionHandler::handlePrintOnce(ExecutionState &state,
+                                             KInstruction *target,
+                                             std::vector<ref<Expr> > &arguments) {
+ assert(arguments.size()==2 &&
+         "invalid number of arguments to klee_print_once");
+
+  static int keys[256];
+
+  int key = cast<ConstantExpr>(arguments[0])->getZExtValue();
+
+  if(!keys[key]){
+     keys[key] = 1;
+     std::string msg_str = readStringAtAddress(state, arguments[1]);
+     printf("%s\n", msg_str.c_str());
+  }
+
+}
+
 
 void SpecialFunctionHandler::bind() {
   unsigned N = sizeof(handlerInfo)/sizeof(handlerInfo[0]);
@@ -586,7 +608,9 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
   ref<Expr> address = arguments[0];
   ref<Expr> size = arguments[1];
 
-  Executor::StatePair zeroSize = executor.fork(state, 
+  // assert-p4 changes
+  //Executor::StatePair zeroSize = executor.fork(state, 
+  Executor::StatePair zeroSize = executor.forkPath(state, 
                                                Expr::createIsZero(size), 
                                                true);
   
@@ -594,7 +618,9 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
     executor.executeFree(*zeroSize.first, address, target);   
   }
   if (zeroSize.second) { // size != 0
-    Executor::StatePair zeroPointer = executor.fork(*zeroSize.second, 
+    // assert-p4 changes
+    //Executor::StatePair zeroPointer = executor.fork(*zeroSize.second, 
+    Executor::StatePair zeroPointer = executor.forkPath(*zeroSize.second, 
                                                     Expr::createIsZero(address), 
                                                     true);
     

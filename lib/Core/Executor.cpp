@@ -107,6 +107,12 @@
 #include <errno.h>
 #include <cxxabi.h>
 
+// assert-p4 changes
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+// --------------------
+
 using namespace llvm;
 using namespace klee;
 
@@ -766,7 +772,9 @@ void Executor::branch(ExecutionState &state,
 }
 
 Executor::StatePair 
-Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+// assert-p4 changes
+//Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+Executor::forkPath(ExecutionState &current, ref<Expr> condition, bool isInternal) {
   Solver::Validity res;
   std::map< ExecutionState*, std::vector<SeedInfo> >::iterator it = 
     seedMap.find(&current);
@@ -1621,7 +1629,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       assert(bi->getCondition() == bi->getOperand(0) &&
              "Wrong operand index!");
       ref<Expr> cond = eval(ki, 0, state).value;
-      Executor::StatePair branches = fork(state, cond, false);
+      // assert-p4 changes
+      // Executor::StatePair branches = fork(state, cond, false);
+      Executor::StatePair branches = forkPath(state, cond, false);      
 
       // NOTE: There is a hidden dependency here, markBranchVisited
       // requires that we still be in the context of the branch
@@ -1852,7 +1862,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
         bool success = solver->getValue(*free, v, value);
         assert(success && "FIXME: Unhandled solver failure");
         (void) success;
-        StatePair res = fork(*free, EqExpr::create(v, value), true);
+        // assert-p4 changes
+        //StatePair res = fork(*free, EqExpr::create(v, value), true);
+        StatePair res = forkPath(*free, EqExpr::create(v, value), true);
         if (res.first) {
           uint64_t addr = value->getZExtValue();
           if (legalFunctions.count(addr)) {
@@ -3199,7 +3211,9 @@ void Executor::executeAlloc(ExecutionState &state,
       example = tmp;
     }
 
-    StatePair fixedSize = fork(state, EqExpr::create(example, size), true);
+    // assert-p4 changes
+    //StatePair fixedSize = fork(state, EqExpr::create(example, size), true);
+    StatePair fixedSize = forkPath(state, EqExpr::create(example, size), true); 
     
     if (fixedSize.second) { 
       // Check for exactly two values
@@ -3220,7 +3234,9 @@ void Executor::executeAlloc(ExecutionState &state,
         // See if a *really* big value is possible. If so assume
         // malloc will fail for it, so lets fork and return 0.
         StatePair hugeSize = 
-          fork(*fixedSize.second, 
+          // assert-p4 changes
+          //fork(*fixedSize.second,
+          forkPath(*fixedSize.second, 
                UltExpr::create(ConstantExpr::alloc(1<<31, W), size), 
                true);
         if (hugeSize.first) {
@@ -3251,7 +3267,9 @@ void Executor::executeAlloc(ExecutionState &state,
 void Executor::executeFree(ExecutionState &state,
                            ref<Expr> address,
                            KInstruction *target) {
-  StatePair zeroPointer = fork(state, Expr::createIsZero(address), true);
+  // assert-p4 changes
+  //StatePair zeroPointer = fork(state, Expr::createIsZero(address), true);
+  StatePair zeroPointer = forkPath(state, Expr::createIsZero(address), true);
   if (zeroPointer.first) {
     if (target)
       bindLocal(target, *zeroPointer.first, Expr::createPointer(0));
@@ -3291,7 +3309,9 @@ void Executor::resolveExact(ExecutionState &state,
        it != ie; ++it) {
     ref<Expr> inBounds = EqExpr::create(p, it->first->getBaseExpr());
     
-    StatePair branches = fork(*unbound, inBounds, true);
+    // assert-p4 changes
+    //StatePair branches = fork(*unbound, inBounds, true);
+    StatePair branches = forkPath(*unbound, inBounds, true);
     
     if (branches.first)
       results.push_back(std::make_pair(*it, branches.first));
@@ -3393,8 +3413,10 @@ void Executor::executeMemoryOperation(ExecutionState &state,
     const MemoryObject *mo = i->first;
     const ObjectState *os = i->second;
     ref<Expr> inBounds = mo->getBoundsCheckPointer(address, bytes);
-    
-    StatePair branches = fork(*unbound, inBounds, true);
+   
+    // assert-p4 changes 
+    //StatePair branches = fork(*unbound, inBounds, true);
+    StatePair branches = forkPath(*unbound, inBounds, true);
     ExecutionState *bound = branches.first;
 
     // bound can be 0 on failure or overlapped 

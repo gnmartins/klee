@@ -109,6 +109,7 @@ extern "C" {
   void klee_assume(uintptr_t condition);
   void klee_warning(const char *message);
   void klee_warning_once(const char *message);
+  void klee_print_once(int id, const char *msg);
   void klee_prefer_cex(void *object, uintptr_t condition);
   void klee_posix_prefer_cex(void *object, uintptr_t condition);
   void klee_mark_global(void *object);
