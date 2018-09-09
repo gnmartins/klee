@@ -25,3 +25,19 @@ arguments.
 Coverage information can be found [here](http://vm-klee.doc.ic.ac.uk:55555/index.html).
 
 For further information, see the [webpage](http://klee.github.io/).
+
+## Modifications for assert-p4
+
+This modified version of KLEE includes a new function called klee_print_once which is used to display the symbolic execution results of [assert-p4](https://github.com/gnmartins/assert-p4) in a more user friendly way.
+
+The following files have been changed:
+
+* include/klee/klee.h
+* lib/Core/Executor.cpp
+* lib/Core/Executor.h
+* lib/Core/SpecialFunctionHandler.cpp
+* lib/Core/SpecialFunctionHandler.h
+
+The modifications can be found in each of these files directly under ```// assert-p4 changes``` comments. 
+
+The core change is the [implementation of a function handler for klee_print_once](https://github.com/gnmartins/klee/blob/b289b892e8a273ad7423b48bfb839b4a725fa8da/lib/Core/SpecialFunctionHandler.cpp#L208-L225).
